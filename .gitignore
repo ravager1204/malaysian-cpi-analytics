@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.env
+
+# Data files
+data/raw/*
+data/processed/*
+*.parquet
+*.csv
+*.xlsx
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Database
+*.db
+*.sqlite
+
+# Airflow
+airflow/logs/
+airflow/airflow.db
+
+# dbt
+dbt_project/target/
+dbt_project/logs/
