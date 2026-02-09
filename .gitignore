@@ -41,3 +41,7 @@ airflow/airflow.db
 # dbt
 dbt_project/target/
 dbt_project/logs/
+
+
+# Test scripts
+test_scripts/
