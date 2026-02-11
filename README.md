@@ -134,6 +134,14 @@ pyarrow==14.0.2
 
 ### Three-Layer Data Warehouse
 
+Implements a medallion-style architecture pattern with progressive data refinement:
+- **Raw Layer**: Unmodified source data from OpenDOSM API
+- **Staging Layer**: Cleaned, validated, and standardized data
+- **Mart Layer**: Business-logic applied, analytics-ready dimensional models
+
+This follows industry-standard data lakehouse principles (Bronze/Silver/Gold) 
+adapted for a relational database environment.
+
 **1. Raw Layer**
 - `raw.cpi_data` - Unmodified CPI data from source
 - `raw.categories` - Category lookup table
@@ -365,3 +373,4 @@ The data used in this project is from OpenDOSM and is licensed under Creative Co
 ---
 
 **⭐ If you found this project useful, please consider giving it a star!**
+
