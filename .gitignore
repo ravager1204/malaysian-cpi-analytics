@@ -45,3 +45,7 @@ dbt_project/logs/
 
 # Test scripts
 test_scripts/
+
+# Power BI
+*.pbix
+powerbi/*.pbix
