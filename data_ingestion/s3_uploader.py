@@ -2,146 +2,122 @@
 S3 Uploader
 Upload data files to AWS S3 for backup and cloud storage
 """
+import logging
+from datetime import datetime
+from pathlib import Path
+
 import boto3
 from botocore.exceptions import ClientError
-import logging
-from pathlib import Path
-from datetime import datetime
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
+from config.settings import get_settings
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class S3Uploader:
-    """Upload files to AWS S3"""
-    
+    """Upload files to AWS S3."""
+
     def __init__(self):
-        """Initialize S3 client"""
+        """Initialize S3 client."""
+        settings = get_settings()
+        self.settings = settings
         self.s3_client = boto3.client(
-            's3',
-            aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-            aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-            region_name=os.getenv('AWS_REGION')
+            "s3",
+            aws_access_key_id=settings.aws.access_key_id,
+            aws_secret_access_key=settings.aws.secret_access_key,
+            region_name=settings.aws.region,
         )
-        self.bucket_name = os.getenv('S3_BUCKET_NAME')
-        logger.info(f"✅ S3 client initialized for bucket: {self.bucket_name}")
-    
+        self.bucket_name = settings.aws.bucket_name
+        logger.info("S3 client initialized for bucket: %s", self.bucket_name)
+
     def upload_file(self, local_path: Path, s3_key: str) -> bool:
-        """
-        Upload a single file to S3
-        
-        Args:
-            local_path: Path to local file
-            s3_key: S3 object key (path in bucket)
-            
-        Returns:
-            True if successful, False otherwise
-        """
+        """Upload a single file to S3."""
         try:
-            logger.info(f"Uploading {local_path} to s3://{self.bucket_name}/{s3_key}")
-            
-            self.s3_client.upload_file(
-                str(local_path),
-                self.bucket_name,
-                s3_key
-            )
-            
-            logger.info(f"✅ Uploaded successfully")
+            logger.info("Uploading %s to s3://%s/%s", local_path, self.bucket_name, s3_key)
+            self.s3_client.upload_file(str(local_path), self.bucket_name, s3_key)
+            logger.info("Uploaded successfully")
             return True
-            
-        except ClientError as e:
-            logger.error(f"❌ Upload failed: {e}")
+        except ClientError as exc:
+            logger.error("Upload failed: %s", exc)
             return False
-    
-    def upload_data_backup(self, date_partition: str = None) -> dict:
-        """
-        Upload all raw data files to S3 with date partitioning
-        
-        Args:
-            date_partition: Date string (YYYY-MM-DD), defaults to today
-            
-        Returns:
-            Dictionary with upload results
-        """
+
+    def upload_data_backup(self, date_partition: str | None = None) -> dict:
+        """Upload all raw data files to S3 with date partitioning."""
+        if not self.settings.aws.enable_upload:
+            logger.info("S3 upload disabled by configuration; skipping backup step")
+            return {"date": date_partition, "uploaded": [], "failed": [], "skipped": True}
+
         if not date_partition:
-            date_partition = datetime.now().strftime('%Y-%m-%d')
-        
+            date_partition = datetime.now().strftime("%Y-%m-%d")
+
         logger.info("=" * 70)
-        logger.info(f"STARTING S3 BACKUP FOR {date_partition}")
+        logger.info("STARTING S3 BACKUP FOR %s", date_partition)
         logger.info("=" * 70)
-        
-        results = {
-            'date': date_partition,
-            'uploaded': [],
-            'failed': []
-        }
-        
-        # Define files to upload
+
+        results = {"date": date_partition, "uploaded": [], "failed": []}
+
         files_to_upload = [
             {
-                'local': Path('data/raw/cpi_latest.parquet'),
-                's3_key': f'raw/cpi/date={date_partition}/cpi_data.parquet'
+                "local": self.settings.raw_data_dir / "cpi_latest.parquet",
+                "s3_key": f"raw/cpi/date={date_partition}/cpi_data.parquet",
             },
             {
-                'local': Path('data/raw/categories.parquet'),
-                's3_key': f'raw/categories/date={date_partition}/categories.parquet'
-            }
+                "local": self.settings.raw_data_dir / "categories.parquet",
+                "s3_key": f"raw/categories/date={date_partition}/categories.parquet",
+            },
         ]
-        
-        # Upload each file
+
         for file_info in files_to_upload:
-            local_path = file_info['local']
-            s3_key = file_info['s3_key']
-            
+            local_path = file_info["local"]
+            s3_key = file_info["s3_key"]
+
             if not local_path.exists():
-                logger.warning(f"⚠️  File not found: {local_path}")
-                results['failed'].append(str(local_path))
+                logger.warning("File not found: %s", local_path)
+                results["failed"].append(str(local_path))
                 continue
-            
+
             success = self.upload_file(local_path, s3_key)
-            
             if success:
-                results['uploaded'].append(s3_key)
+                results["uploaded"].append(s3_key)
             else:
-                results['failed'].append(str(local_path))
-        
-        # Summary
-        logger.info("\n" + "=" * 70)
+                results["failed"].append(str(local_path))
+
+        logger.info("\n%s", "=" * 70)
         logger.info("BACKUP SUMMARY")
         logger.info("=" * 70)
-        logger.info(f"✅ Uploaded: {len(results['uploaded'])} files")
-        logger.info(f"❌ Failed: {len(results['failed'])} files")
-        
-        if results['uploaded']:
-            logger.info("\nUploaded files:")
-            for key in results['uploaded']:
-                logger.info(f"  - s3://{self.bucket_name}/{key}")
-        
+        logger.info("Uploaded: %s files", len(results["uploaded"]))
+        logger.info("Failed: %s files", len(results["failed"]))
+
+        if results["uploaded"]:
+            logger.info("Uploaded files:")
+            for key in results["uploaded"]:
+                logger.info("  - s3://%s/%s", self.bucket_name, key)
+
         logger.info("=" * 70)
-        
         return results
-    
-    def list_bucket_contents(self, prefix: str = '') -> list:
-        """List objects in S3 bucket"""
+
+    def list_bucket_contents(self, prefix: str = "") -> list[str]:
+        """List objects in S3 bucket."""
         try:
             response = self.s3_client.list_objects_v2(
                 Bucket=self.bucket_name,
-                Prefix=prefix
+                Prefix=prefix,
             )
-            
-            if 'Contents' in response:
-                objects = [obj['Key'] for obj in response['Contents']]
-                logger.info(f"Found {len(objects)} objects in s3://{self.bucket_name}/{prefix}")
+            if "Contents" in response:
+                objects = [obj["Key"] for obj in response["Contents"]]
+                logger.info(
+                    "Found %s objects in s3://%s/%s",
+                    len(objects),
+                    self.bucket_name,
+                    prefix,
+                )
                 return objects
-            else:
-                logger.info(f"No objects found in s3://{self.bucket_name}/{prefix}")
-                return []
-                
-        except ClientError as e:
-            logger.error(f"❌ Failed to list bucket: {e}")
+
+            logger.info("No objects found in s3://%s/%s", self.bucket_name, prefix)
+            return []
+        except ClientError as exc:
+            logger.error("Failed to list bucket: %s", exc)
             return []
 
 

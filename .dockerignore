@@ -1,0 +1,14 @@
+.git
+.github
+venv
+__pycache__
+.pytest_cache
+.ruff_cache
+logs
+data/outputs
+data/processed
+tests/_artifacts
+tests/_tmp
+*.pyc
+*.pyo
+*.log

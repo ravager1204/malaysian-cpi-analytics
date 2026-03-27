@@ -2,11 +2,9 @@
 DOSM API Client
 Professional client for accessing Malaysia Department of Statistics data
 """
-import requests
-import pandas as pd
-import time
 import logging
-from typing import Optional, List
+
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

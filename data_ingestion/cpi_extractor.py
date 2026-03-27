@@ -2,11 +2,11 @@
 CPI Data Extractor
 Extracts and validates CPI data from DOSM
 """
-import pandas as pd
 import logging
 from pathlib import Path
-from datetime import datetime
-from typing import Optional
+
+import pandas as pd
+
 from .dosm_client import DOSMClient
 
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +19,7 @@ class CPIExtractor:
     def __init__(self, client: DOSMClient):
         self.client = client
         
-    def extract_full(self, save_path: Optional[Path] = None) -> pd.DataFrame:
+    def extract_full(self, save_path: Path | None = None) -> pd.DataFrame:
         """
         Extract complete CPI dataset with validation
         
